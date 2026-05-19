@@ -1,0 +1,86 @@
+# OpenWA - Coolify Deployment
+#
+# Domain setup in Coolify:
+#   dashboard service → wa-dashboard.privatedevs.com.mx       (port 80)
+#   openwa-api service → api.privatedevs.com.mx/wa            (port 2785)
+#
+# The dashboard nginx proxies /api and /socket.io to openwa-api internally.
+# Coolify/Traefik must strip the /wa prefix before forwarding to openwa-api.
+
+services:
+  openwa-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - '2785'
+    environment:
+      - NODE_ENV=production
+      - PORT=2785
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # Database
+      - DATABASE_TYPE=${DATABASE_TYPE:-sqlite}
+      - DATABASE_NAME=${DATABASE_NAME:-/app/data/openwa.sqlite}
+      - DATABASE_HOST=${DATABASE_HOST:-}
+      - DATABASE_PORT=${DATABASE_PORT:-5432}
+      - DATABASE_USERNAME=${DATABASE_USERNAME:-openwa}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-}
+      - DATABASE_SYNCHRONIZE=${DATABASE_SYNCHRONIZE:-false}
+      # Built-in services disabled (use Coolify resources instead)
+      - POSTGRES_BUILTIN=false
+      - REDIS_BUILTIN=false
+      - MINIO_BUILTIN=false
+      # Engine (Puppeteer)
+      - ENGINE_TYPE=${ENGINE_TYPE:-whatsapp-web.js}
+      - SESSION_DATA_PATH=/app/data/sessions
+      - PUPPETEER_HEADLESS=true
+      - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu
+      # Storage
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
+      - STORAGE_LOCAL_PATH=/app/data/media
+      # Redis
+      - REDIS_ENABLED=${REDIS_ENABLED:-false}
+      - REDIS_HOST=${REDIS_HOST:-}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      # Webhook
+      - WEBHOOK_TIMEOUT=${WEBHOOK_TIMEOUT:-10000}
+      - WEBHOOK_MAX_RETRIES=${WEBHOOK_MAX_RETRIES:-3}
+      - WEBHOOK_RETRY_DELAY=${WEBHOOK_RETRY_DELAY:-5000}
+      # Rate limiting
+      - RATE_LIMIT_TTL=${RATE_LIMIT_TTL:-60}
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-100}
+      # CORS: only allow dashboard origin
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://wa-dashboard.privatedevs.com.mx}
+      # URLs for startup banner
+      - BASE_URL=${BASE_URL:-https://api.privatedevs.com.mx/wa}
+      - DASHBOARD_URL=${DASHBOARD_URL:-https://wa-dashboard.privatedevs.com.mx}
+    volumes:
+      - openwa-data:/app/data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:2785/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.coolify
+    restart: unless-stopped
+    expose:
+      - '80'
+    depends_on:
+      openwa-api:
+        condition: service_healthy
+
+volumes:
+  openwa-data:
+    driver: local
