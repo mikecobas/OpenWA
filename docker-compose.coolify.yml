@@ -1,8 +1,8 @@
 # OpenWA - Coolify Deployment
 #
 # Domain setup in Coolify:
-#   dashboard service → wa-dashboard.privatedevs.com.mx       (port 80)
-#   openwa-api service → api.privatedevs.com.mx/wa            (port 2785)
+#   dashboard service → wa-dashboard.smartcode-labs.com       (port 80)
+#   openwa-api service → api.smartcode-labs.com/wa            (port 2785)
 #
 # The dashboard nginx proxies /api and /socket.io to openwa-api internally.
 # Coolify/Traefik must strip the /wa prefix before forwarding to openwa-api.
@@ -51,10 +51,10 @@ services:
       - RATE_LIMIT_TTL=${RATE_LIMIT_TTL:-60}
       - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-100}
       # CORS: only allow dashboard origin
-      - CORS_ORIGINS=${CORS_ORIGINS:-https://wa-dashboard.privatedevs.com.mx}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://wa-dashboard.smartcode-labs.com}
       # URLs for startup banner
-      - BASE_URL=${BASE_URL:-https://api.privatedevs.com.mx/wa}
-      - DASHBOARD_URL=${DASHBOARD_URL:-https://wa-dashboard.privatedevs.com.mx}
+      - BASE_URL=${BASE_URL:-https://api.smartcode-labs.com/wa}
+      - DASHBOARD_URL=${DASHBOARD_URL:-https://wa-dashboard.smartcode-labs.com}
     volumes:
       - openwa-data:/app/data
     healthcheck:
